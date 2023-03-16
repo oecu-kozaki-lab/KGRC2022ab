@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+<title>JavaScriptを用いたSPARQL処理</title>
+
+<link rel="stylesheet" href="style.css">
+<!--KG検索用のライブラリ（https://kgs.hozo.jp/にて公開）の読み込み-->
+<script src="KGSearch.js"></script>
+
+<script>
+window.addEventListener('load', async () => {
+    // //パラメータ（?id=Qxxx）を取得する処理
+    // let qid = location.search;
+    // if(qid!=null){
+    //     document.getElementById('INPUT').value = qid.replace("?id=","");
+    // }
+    
+	const sendButton = document.getElementById('send');
+	//検索実行ボタンで実行する処理
+	sendButton.addEventListener('click', async () => {
+        makeQuery();
+	}, false);
+
+}, false);
+
+//SPARQLクエリを実行する
+async function makeQuery(){
+	//SPARQLエンドポイントの指定
+    let endpoint = document.getElementById('ENDPOINT').value;
+
+	//SPARQLクエリの取得
+    //入力したIDを取得
+    let qid = document.getElementById('INPUT').value;
+    //SPARQLクエリ中の"#INPUT#"をqidで置き換える
+	let query = document.getElementById('query_area').value.replace("#INPUT#",qid);
+    
+	//SPARQLクエリの実行処理	
+	dispLoading("検索中...");//検索中の画像表示	
+	const resultData = await sendSPARQLQuery(endpoint, query);//SPARQLクエリの実行
+    removeLoading();//検索中の画像を削除
+ 
+	//SPARQLクエリの実行結果の表示処理
+	document.getElementById('resjson_area').value = JSON.stringify(resultData,null,'  ');
+	
+	const resultArea = document.getElementById('result_div');	
+    showResult(resultData,resultArea); //クエリ結果の表示
+}
+
+function showResult(resultData,resultArea){
+	const keys = resultData.head.vars; //戻り値の変数一覧を格納する配列
+	const data = resultData.results.bindings;//戻り値のデータを格納する配列（JSON）
+
+	let mesText ='<table border="1">';//表示内容を作成するための変数	
+   
+    //項目名部分の処理
+    mesText +='<tr>';  
+    for(let k=0;k<keys.length;k++){
+        mesText +='<th>'+keys[k]+'</th>';
+    }
+    mesText +='</tr>';  
+    
+    //データ部分の処理    
+    for (let i=0; i<data.length;i++){
+        mesText +='<tr>'; 
+        for(let k=0;k<keys.length;k++){
+            mesText += '<td>'+showRDFdata(data[i][keys[k]])+'</td>'; 
+        }
+        mesText +='</tr>\n'; 
+    }
+    mesText +="</table>";
+
+	resultArea.innerHTML = mesText;//結果を表示する領域のHTMLを書き換える
+}
+
+function showRDFdata(val){
+    let mesText ="";
+
+    if(val.type == "uri"){
+            mesText += '<a href="'+val.value+'" target="_blank">'
+                     +  val.value + '</a>';
+        }
+    else if(val.type == "literal"){
+        if(val['xml:lang'] != null){
+            mesText += val.value + '@' + val['xml:lang'];
+        }
+        else if(val.datatype != null){
+            mesText += val.value + '^^' + val.datatype;
+        }
+        else{
+            mesText += val.value; 
+        }
+    }
+    else{
+        mesText += val.value; 
+    }
+     
+    return mesText;
+}
+
+</script>
+</head>
+
+<body>
+<header id="head" >
+	<h1>SPARQLを用いた検索システム【テンプレート】</h1>
+</header>
+<div id="menu" class="container">
+    ENDPOINT:<input id="ENDPOINT" type="text" value="http://kgrc4si.ml:7200/repositories/KGRC4SIv01" autocomplete="off" size="40"/><br>
+    INPUT:<input id="INPUT" type="text" value="2" autocomplete="off" size="20"/><br>
+<input type="button" id="send" value="検索の実行" style="margin-top:8px; "><br>
+</div>
+<!-- 検索条件設定の領域 -->
+<div id="query" class="container">
+<b>SPARQLクエリ</b><br>
+<textarea id="query_area" class="t_area" rows="10">
+    PREFIX ex: <http://example.org/virtualhome2kg/instance/>
+    PREFIX vh2kg: <http://example.org/virtualhome2kg/ontology/>
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX vh2kgAction: <http://example.org/virtualhome2kg/ontology/action/>
+    select ?Temporal ?place (sum(?Duration) as ?sum)  where {
+    ?Event vh2kg:action vh2kgAction:sit;
+           vh2kg:time ?Temporal;
+           vh2kg:place ?place.
+    ?place a vh2kg:Toilet .
+    ?Temporal <http://www.w3.org/2006/time#numericDuration> ?Duration
+    FILTER(?Duration > 5)
+    } Group by ?Temporal ?place     
+</textarea>
+<div style="display:none">
+<br>
+<b>クエリ実行結果の戻り値(JSON形式）</b><br>
+<textarea id="resjson_area"  class="t_area" rows="10" ></textarea>
+</div>
+</div>
+
+<!-- 結果表示用の領域 -->
+<div id="result_div"  class="container" style="flex: 1;"></div>
+</body>
+</html>
