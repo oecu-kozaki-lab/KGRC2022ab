@@ -110,7 +110,7 @@ function showRDFdata(val){
 </header>
 <div id="menu" class="container">
     ENDPOINT:<input id="ENDPOINT" type="text" value="http://kgrc4si.ml:7200/repositories/KGRC4SIv01" autocomplete="off" size="40"/><br>
-    所要時間(秒):<input id="INPUT" type="text" value="2" autocomplete="off" size="20"/><br>
+    所要時間(秒):<input id="INPUT" type="text" value="5" autocomplete="off" size="20"/><br>
 <input type="button" id="send" value="検索の実行" style="margin-top:8px; "><br>
 </div>
 <!-- 検索条件設定の領域 -->
@@ -127,7 +127,7 @@ function showRDFdata(val){
            vh2kg:place ?place.
     ?place a vh2kg:Toilet .
     ?Temporal <http://www.w3.org/2006/time#numericDuration> ?Duration
-    FILTER(?Duration > 5)
+    FILTER(?Duration > #INPUT#)
     } Group by ?Temporal ?place     
 </textarea>
 <div style="display:none">
